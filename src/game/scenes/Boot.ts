@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { URLParameterManager, URL_PARAMS } from '../utils/URLParameterManager';
+import { URLParameterManager } from '../utils/URLParameterManager';
 
 export class Boot extends Scene
 {
@@ -17,16 +17,17 @@ export class Boot extends Scene
         //  The smaller the file size of the assets, the better, as the Boot Scene itself has no preloader.
 
         this.load.image('background', 'assets/bg.png');
+        
+        // 处理URL参数
+        this.handleURLParameters();
+
+        // 加载游戏配置文件（支持远程配置）
+        this.loadGameConfig();
     }
 
     create ()
     {
-        // 处理URL参数
-        this.handleURLParameters();
-        
-        // 将URL参数管理器传递给游戏数据
-        this.registry.set('urlParams', this.urlParams);
-        
+        console.log('[Boot] 游戏配置加载完成，启动Preloader...');
         this.scene.start('Preloader');
     }
 
@@ -35,65 +36,75 @@ export class Boot extends Scene
      */
     private handleURLParameters(): void {
         // 调试模式
-        if (this.urlParams.getBoolean(URL_PARAMS.DEBUG)) {
-            console.log('🐛 调试模式已启用');
-            this.game.config.physics?.arcade && (this.game.config.physics.arcade.debug = true);
+        if (this.urlParams.isDebugMode()) {
+            // 安全地设置物理调试模式
+            if (this.game.config.physics && 'arcade' in this.game.config.physics && this.game.config.physics.arcade) {
+                this.game.config.physics.arcade.debug = true;
+            }
+            this.registry.set('debugMode', true);
+            console.log('[Boot] 调试模式已启用');
         }
-
-        // 跳过介绍
-        if (this.urlParams.getBoolean(URL_PARAMS.SKIP_INTRO)) {
-            console.log('⏭️ 跳过介绍动画');
-            this.registry.set('skipIntro', true);
+        
+        // 关卡选择
+        if (this.urlParams.hasLevel()) {
+            const selectedLevel = this.urlParams.getLevel();
+            this.registry.set('selectedLevel', selectedLevel);
+            console.log(`[Boot] 设置关卡: ${selectedLevel}`);
         }
+    }
 
-        // 设置游戏难度
-        const difficulty = this.urlParams.getString(URL_PARAMS.DIFFICULTY, 'normal');
-        this.registry.set('difficulty', difficulty);
-        console.log(`🎯 游戏难度: ${difficulty}`);
-
-        // 设置关卡
-        const level = this.urlParams.getNumber(URL_PARAMS.LEVEL, 1);
-        this.registry.set('startLevel', level);
-        console.log(`🏁 起始关卡: ${level}`);
-
-        // 设置玩家名称
-        const playerName = this.urlParams.getString(URL_PARAMS.PLAYER_NAME, 'Player');
-        this.registry.set('playerName', playerName);
-        console.log(`👤 玩家名称: ${playerName}`);
-
-        // 音效设置
-        const soundEnabled = this.urlParams.getBoolean(URL_PARAMS.SOUND, true);
-        this.registry.set('soundEnabled', soundEnabled);
-        console.log(`🔊 音效: ${soundEnabled ? '开启' : '关闭'}`);
-
-        // 音乐设置
-        const musicEnabled = this.urlParams.getBoolean(URL_PARAMS.MUSIC, true);
-        this.registry.set('musicEnabled', musicEnabled);
-        console.log(`🎵 音乐: ${musicEnabled ? '开启' : '关闭'}`);
-
-        // 全屏模式
-        const fullscreen = this.urlParams.getBoolean(URL_PARAMS.FULLSCREEN, false);
-        if (fullscreen) {
-            console.log('🖥️ 自动进入全屏模式');
-            this.registry.set('autoFullscreen', true);
+    /**
+     * 加载游戏配置文件（支持远程配置）
+     */
+    private loadGameConfig(): void {
+        // 检查是否有dev_game_config_token参数
+        const devConfigUrl = this.urlParams.getParameter('dev_game_config_token');
+        
+        if (devConfigUrl) {
+            console.log('[Boot] 检测到dev_game_config_token参数，尝试从远程加载配置:', devConfigUrl);
+            
+            // 验证URL格式
+            try {
+                new URL(devConfigUrl);
+            } catch (urlError) {
+                console.warn('[Boot] 无效的URL格式，使用本地配置:', devConfigUrl);
+                this.loadLocalGameConfig();
+                return;
+            }
+            
+            // 尝试加载远程配置，失败时回退到本地
+            this.loadRemoteGameConfig(devConfigUrl);
+        } else {
+            // 使用本地配置文件
+            console.log('[Boot] 使用本地游戏配置文件...');
+            this.loadLocalGameConfig();
         }
+    }
 
-        // 上帝模式（开发用）
-        if (this.urlParams.getBoolean(URL_PARAMS.GOD_MODE)) {
-            console.log('👑 上帝模式已启用');
-            this.registry.set('godMode', true);
-        }
+    /**
+     * 从远程URL加载游戏配置
+     */
+    private loadRemoteGameConfig(url: string): void {
+        console.log('[Boot] 使用GameConfigLoader加载远程配置:', url);
+        
+        // 直接使用GameConfigLoader加载远程配置
+        // 这样可以复用所有现有的处理逻辑
+        this.load.gameConfig('remote-game-config', url);
+        
+        // 监听加载错误，失败时回退到本地配置
+        this.load.once('loaderror', (file: any) => {
+            if (file.key === 'remote-game-config') {
+                console.warn('[Boot] 远程配置加载失败，回退到本地配置:', file.src);
+                this.loadLocalGameConfig();
+            }
+        });
+    }
 
-        // 无限生命（开发用）
-        if (this.urlParams.getBoolean(URL_PARAMS.UNLIMITED_LIVES)) {
-            console.log('💖 无限生命已启用');
-            this.registry.set('unlimitedLives', true);
-        }
-
-        // 显示所有参数
-        const allParams = this.urlParams.getAll();
-        if (Object.keys(allParams).length > 0) {
-            console.log('📋 所有URL参数:', allParams);
-        }
+    /**
+     * 加载本地游戏配置
+     */
+    private loadLocalGameConfig(): void {
+        console.log('[Boot] 加载本地游戏配置文件');
+        this.load.gameConfig('game-config', 'assets/game_config.json');
     }
 }

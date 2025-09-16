@@ -1,17 +1,18 @@
 import { Scene } from 'phaser';
 import { AnimationManager } from '../managers/AnimationManager';
-import { SoundEffectPlayer } from '../managers/SoundEffectPlayer';
+import { AudioManager } from '../audio/AudioManager';
+import { URLParameterManager } from '../utils/URLParameterManager';
 
 export class Preloader extends Scene
 {
     private animationManager: AnimationManager;
-    private soundEffectPlayer: SoundEffectPlayer;
+    private audioManager: AudioManager;
     
     constructor ()
     {
         super('Preloader');
         this.animationManager = AnimationManager.getInstance();
-        this.soundEffectPlayer = SoundEffectPlayer.getInstance();
+        this.audioManager = AudioManager.getInstance();
     }
 
     init ()
@@ -27,114 +28,49 @@ export class Preloader extends Scene
 
         //  Use the 'progress' event emitted by the LoaderPlugin to update the loading bar
         this.load.on('progress', (progress: number) => {
-
             //  Update the progress bar (our bar is 464px wide, so 100% = 464px)
             bar.width = 4 + (460 * progress);
-
         });
+
+        // 初始化管理器 - 在资源加载之前准备好
+        this.audioManager.initialize(this, this.game);
+        this.animationManager.init(this);
     }
 
-    async preload ()
+    preload ()
     {
         //  Load the assets for the game - Replace with your own assets
         this.load.image('logo', 'assets/logo.png');
         
-        // Load tilemap JSON
-        this.load.tilemapTiledJSON('tilemap', 'assets/tilemap/scenes/tilemap.json');
+        // 使用扩展的自定义tilemap加载器 - 自动处理tileset资源
+        this.load.customTilemap('tilemap', 'assets/tilemap/scenes/tilemap.json');
 
-        // Download tilemap.
-        this.load.text('tilemap_json_raw', 'assets/tilemap/scenes/tilemap.json');
-        
-        // Listen for text file loading completion, then load other resources during preload phase
-        this.load.once('filecomplete-text-tilemap_json_raw', () => {
-            this.loadAllAssets();
-        });
-
-        // Initialize SoundEffectPlayer and load config
-        console.log('[Preloader] Initializing SoundEffectPlayer...');
-        this.soundEffectPlayer.init(this);
-        await this.soundEffectPlayer.loadConfig();
-        
-        // Preload all sound effects
-        console.log('[Preloader] Preloading sound effects...');
-        this.soundEffectPlayer.preloadSounds();
-        
-
+        // 使用自定义音频配置加载器 - 自动处理音频资源加载
+        this.load.audioConfig('audio-config', '/assets/audio/audio-config.json');
     }
 
-    private loadAllAssets() {
-        // parse raw tilemap json.
-        let tilemapJsonRaw = this.cache.text.get('tilemap_json_raw');
-        let tilemapJsonObj = null;
-        try {
-            tilemapJsonObj = JSON.parse(tilemapJsonRaw);
-        } catch (e) {
-            console.error('Failed to parse tilemap_json_raw:', e);
-        }
-
-        let tilesets = tilemapJsonObj["tilesets"];
-        if (!tilesets) {
-            return;
-        }
-
-        tilesets.forEach((tileset: any) => {
-            let isAtlas = false;
-
-            let tiles = tileset["tiles"];
-            if (tiles && tiles.length && tiles.length > 0) {
-                let properties = tiles[0]["properties"];
-                if (properties && properties.length && properties.length > 0) {
-                    properties.forEach((property: any) => {
-                        if (property.name === "atlas" && property.value === true) {
-                            isAtlas = true;
-                        }
-                    })
-                }
-            }
-            
-            let imageUri = tileset["image"] as string;
-            if (!imageUri) {
-                return;
-            }
-            
-            let name = tileset["name"] as string;
-            if (!name) {
-                return;
-            }
-
-            if (isAtlas) {
-                // Replace the file extension of imageUri with .json
-                let atlasJsonUri = imageUri.replace(/(\.[^/.]+)$/, '.json');
-                this.load.atlas(name, imageUri, atlasJsonUri);
-                
-                // Load animation configuration if it exists
-                let animationConfigUri = imageUri.replace(/(\.[^/.]+)$/, '_animators.json');
-                this.load.json(`${name}_animations`, animationConfigUri);
-            } else {
-                this.load.image(name, imageUri);
-                console.log("load image", name, imageUri)
-            }
-        })
-    }
 
     create ()
     {
-        // Initialize AnimationManager with this scene
-        this.animationManager.init(this);
-        
-        // Process all loaded animation configurations
+        // 处理已加载的动画配置
         this.processAnimationConfigs();
         
-        // Create all animations
+        // 创建所有动画
         this.animationManager.createAllAnimations();
         
-        // Initialize loaded sounds after all audio files are loaded
-        console.log('[Preloader] Initializing loaded sounds...');
-        this.soundEffectPlayer.onSoundsLoaded();
-        console.log('[Preloader] Sound effect system ready');
+        // 处理已加载的音频资源
+        this.audioManager.processLoadedAudio();
         
-        //  Move to the MainMenu. You could also swap this for a Scene Transition, such as a camera fade.
-        this.scene.start('MainMenu');
+        // 检查是否有选定的关卡，决定下一步跳转
+        const urlParams = URLParameterManager.getInstance();
+        if (urlParams.hasLevel()) {
+            const selectedLevel = urlParams.getLevel();
+            console.log(`[Preloader] 检测到选定的关卡，直接进入游戏: ${selectedLevel}`);
+            this.scene.start('Game');
+        } else {
+            // 正常流程：进入主菜单
+            this.scene.start('MainMenu');
+        }
     }
     
     private processAnimationConfigs(): void {
@@ -142,9 +78,8 @@ export class Preloader extends Scene
         const textureKeys = this.textures.getTextureKeys();
         
         for (const key of textureKeys) {
-            // Check if this is an atlas (has frames)
-            const texture = this.textures.get(key);
-            if (texture && texture.frameTotal > 1) {
+            // Check if this texture is marked as atlas in tilemap
+            if (this.isAtlasTexture(key)) {
                 // Check if we have animation config for this atlas
                 const animConfigKey = `${key}_animations`;
                 if (this.cache.json.exists(animConfigKey)) {
@@ -156,5 +91,41 @@ export class Preloader extends Scene
                 }
             }
         }
+    }
+    
+    /**
+     * Check if a texture is marked as atlas in tilemap configuration
+     */
+    private isAtlasTexture(textureKey: string): boolean {
+        // Check if tilemap is loaded
+        if (!this.cache.tilemap.exists('tilemap')) {
+            return false;
+        }
+        
+        const tilemapData = this.cache.tilemap.get('tilemap');
+        if (!tilemapData || !tilemapData.data || !tilemapData.data.tilesets) {
+            return false;
+        }
+        
+        // Look for this texture in tilesets
+        for (const tileset of tilemapData.data.tilesets) {
+            if (tileset.name === textureKey) {
+                // Check if this tileset has tiles with atlas property
+                if (tileset.tiles) {
+                    for (const tile of tileset.tiles) {
+                        if (tile.properties) {
+                            for (const prop of tile.properties) {
+                                if (prop.name === 'atlas' && prop.value === true) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        
+        return false;
     }
 }

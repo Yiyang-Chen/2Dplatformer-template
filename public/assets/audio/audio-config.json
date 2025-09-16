@@ -1,0 +1,218 @@
+{
+  "loadStrategy": "preload_all",
+  "audioTypes": {
+    "bgm": {
+      "defaultVolume": 0.7,
+      "loop": true,
+      "sceneMapping": {
+        "MainMenu": "menu_theme",
+        "Game": "game_theme",
+        "Victory": "victory_theme",
+        "GameOver": "gameover_theme"
+      }
+    },
+    "sfx": {
+      "defaultVolume": 0.5,
+      "loop": false,
+      "animationMapping": {
+        "main_player": {
+          "idle": [],
+          "walk": ["player_walk_1", "player_walk_2"],
+          "jump": ["player_jump", "player_jump_high"],
+          "land": ["player_land"],
+          "attack": ["player_attack"],
+          "hit": ["player_hurt"],
+          "die": ["player_die"],
+          "collect": ["collect_coin", "collect_gem"],
+          "magic": ["magic_cast"],
+          "duck": [],
+          "climb": []
+        },
+        "character_purple": {
+          "idle": [],
+          "walk": ["purple_walk_1"],
+          "jump": ["purple_jump"],
+          "hit": ["purple_hurt"],
+          "duck": [],
+          "climb": [],
+          "front": []
+        },
+        "frog": {
+          "idle": [],
+          "jump": ["frog_jump_1", "frog_jump_2"],
+          "rest": [],
+          "walk": [],
+          "hit": ["frog_hurt"],
+          "die": ["frog_die"],
+          "attack": ["frog_attack"]
+        },
+        "enemy": {
+          "idle": [],
+          "walk": ["enemy_walk"],
+          "jump": ["enemy_jump"],
+          "attack": ["enemy_attack"],
+          "hit": ["enemy_hurt"],
+          "die": ["enemy_die"]
+        },
+        "coin_gold": {
+          "collect": ["coin_collect"],
+          "idle": [],
+          "spin": []
+        },
+        "hud_key_green": {
+          "collect": ["key_collect"],
+          "idle": []
+        },
+        "flag_green_a": {
+          "reach": ["flag_reach"],
+          "idle": []
+        },
+        "spikes": {
+          "damage": ["spike_damage"]
+        }
+      }
+    }
+  },
+  "assets": {
+    "bgm": {
+      "menu_theme": {
+        "url": "bgm_baltic_levity",
+        "preload": true,
+        "volume": 0.7,
+        "loop": true
+      },
+      "game_theme": {
+        "url": "bgm_alls_fair_in_love",
+        "preload": false,
+        "volume": 0.5,
+        "loop": true
+      },
+      "victory_theme": {
+        "url": "bgm_attic_secrets",
+        "preload": false,
+        "volume": 0.8,
+        "loop": false
+      },
+      "gameover_theme": {
+        "url": "bgm_baltic_levity",
+        "preload": false,
+        "volume": 0.6,
+        "loop": false
+      }
+    },
+    "sfx": {
+      "player_walk_1": {
+        "url": "sfx_bump",
+        "preload": true
+      },
+      "player_walk_2": {
+        "url": "sfx_select",
+        "preload": true
+      },
+      "player_jump": {
+        "url": "sfx_jump",
+        "preload": true
+      },
+      "player_jump_high": {
+        "url": "sfx_jump_high",
+        "preload": true
+      },
+      "player_land": {
+        "url": "sfx_bump",
+        "preload": true
+      },
+      "player_attack": {
+        "url": "sfx_throw",
+        "preload": true
+      },
+      "player_hurt": {
+        "url": "sfx_hurt",
+        "preload": true
+      },
+      "player_die": {
+        "url": "sfx_disappear",
+        "preload": true
+      },
+      "collect_coin": {
+        "url": "sfx_coin",
+        "preload": true
+      },
+      "collect_gem": {
+        "url": "sfx_gem",
+        "preload": true
+      },
+      "magic_cast": {
+        "url": "sfx_magic",
+        "preload": true
+      },
+      "purple_walk_1": {
+        "url": "sfx_select",
+        "preload": true
+      },
+      "purple_jump": {
+        "url": "sfx_jump",
+        "preload": true
+      },
+      "purple_hurt": {
+        "url": "sfx_hurt",
+        "preload": true
+      },
+      "frog_jump_1": {
+        "url": "sfx_jump",
+        "preload": true
+      },
+      "frog_jump_2": {
+        "url": "sfx_select",
+        "preload": true
+      },
+      "frog_hurt": {
+        "url": "sfx_hurt",
+        "preload": true
+      },
+      "frog_die": {
+        "url": "sfx_disappear",
+        "preload": true
+      },
+      "frog_attack": {
+        "url": "sfx_throw",
+        "preload": true
+      },
+      "enemy_walk": {
+        "url": "sfx_select",
+        "preload": true
+      },
+      "enemy_jump": {
+        "url": "sfx_jump",
+        "preload": true
+      },
+      "enemy_attack": {
+        "url": "sfx_throw",
+        "preload": true
+      },
+      "enemy_hurt": {
+        "url": "sfx_hurt",
+        "preload": true
+      },
+      "enemy_die": {
+        "url": "sfx_disappear",
+        "preload": true
+      },
+      "coin_collect": {
+        "url": "sfx_coin",
+        "preload": true
+      },
+      "key_collect": {
+        "url": "sfx_gem",
+        "preload": true
+      },
+      "flag_reach": {
+        "url": "sfx_magic",
+        "preload": true
+      },
+      "spike_damage": {
+        "url": "sfx_hurt",
+        "preload": true
+      }
+    }
+  }
+}
