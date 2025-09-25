@@ -82,7 +82,17 @@ export class GlobalResourceManager {
 
         // 构建scenes字典 (key作为key)
         config.scenes.forEach(scene => {
-            this.scenesDict.set(scene.key, scene);
+            // 将字符串key转换为数字key以保持一致性
+            const numericKey = typeof scene.key === 'string' ? parseInt(scene.key, 10) : scene.key;
+            console.log(`[GlobalResourceManager] 转换scene key: ${scene.key} (${typeof scene.key}) -> ${numericKey} (${typeof numericKey})`);
+            
+            // 创建一个新的scene对象，确保key是数字类型
+            const normalizedScene = {
+                ...scene,
+                key: numericKey
+            };
+            
+            this.scenesDict.set(numericKey, normalizedScene);
             
             // 同时构建资源key映射表
             scene.resources.forEach(resource => {
